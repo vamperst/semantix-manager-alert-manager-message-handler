@@ -1,0 +1,40 @@
+service: alert-manager-handler
+
+plugins:
+  - serverless-domain-manager
+
+custom:
+  stage: ${env:stage}
+  region: ${env:region}
+  account: ${env:account}
+  customDomain:
+    domainName: ${env:domain}
+    certificateName: ${env:certificate}
+    basePath: 'alertmanager'
+    stage: ${self:custom.stage}
+    createRoute53Record: true
+    
+provider:
+  name: aws
+  stage: ${self:custom.stage}
+  runtime: python3.6
+  region: ${self:custom.region}
+  memorySize: 128
+  timeout: 30
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - "sns:Publish"
+      Resource:
+        - "arn:aws:sns:${self:custom.region}:${env:account}:${self:custom.stage}-sns-alert-manager"
+  environment:
+    sns_alert_manager: "arn:aws:sns:${self:custom.region}:${env:account}:${self:custom.stage}-sns-alert-manager"
+
+functions:
+  messageHandler:
+    handler: handler.messagehandler
+    events:
+      - http:
+          path: message/handler
+          method: post
+          cors: true
